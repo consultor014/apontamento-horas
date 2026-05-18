@@ -10,17 +10,6 @@
         "activities": "Teste",
         "obs": "Teste1"
       }
-    ],
-    "2026-05-19": [
-      {
-        "client": "Bridgestone",
-        "start": "08:00",
-        "end": "17:30",
-        "lunchOut": "13:00",
-        "lunchIn": "14:00",
-        "activities": "",
-        "obs": ""
-      }
     ]
   },
   "clients": [
@@ -28,6 +17,6 @@
   ],
   "dailyGoal": 8,
   "weeklyGoal": 40,
-  "lastUpdated": "2026-05-18T19:32:10.147Z",
+  "lastUpdated": "2026-05-18T19:32:39.681Z",
   "updatedBy": "Lucas Lira"
 }
