@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apontamento de Horas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #F5F4F0;
+    --surface: #FFFFFF;
+    --surface2: #EEECEA;
+    --border: #D8D6D0;
+    --border2: #C8C6C0;
+    --text: #1A1916;
+    --text2: #6B6860;
+    --text3: #9B9890;
+    --accent: #2D6A4F;
+    --accent-bg: #E8F4EE;
+    --accent2: #D4A017;
+    --accent2-bg: #FBF3DC;
+    --danger: #C0392B;
+    --danger-bg: #FDECEA;
+    --info: #1a5fa8;
+    --info-bg: #e8f0fb;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .app-shell { display: flex; min-height: 100vh; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 0;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 10;
+    transition: transform 0.25s;
+  }
+
+  .sidebar-brand { padding: 0 20px 24px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+
+  .brand-icon {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 10px;
+  }
+  .brand-icon svg { fill: white; width: 18px; height: 18px; }
+  .brand-name { font-size: 15px; font-weight: 600; color: var(--text); }
+  .brand-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  .sync-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; padding: 2px 7px; border-radius: 20px;
+    margin-top: 6px; font-weight: 500;
+  }
+  .sync-badge.ok { background: var(--accent-bg); color: var(--accent); }
+  .sync-badge.err { background: var(--danger-bg); color: var(--danger); }
+  .sync-badge.syncing { background: var(--info-bg); color: var(--info); }
+  .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .nav-section-label {
+    font-size: 10px; font-weight: 600; color: var(--text3);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 16px 20px 6px;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 20px; font-size: 14px; color: var(--text2);
+    cursor: pointer; border: none; background: none;
+    width: 100%; text-align: left; transition: all 0.15s;
+  }
+  .nav-item:hover { background: var(--bg); color: var(--text); }
+  .nav-item.active { background: var(--accent-bg); color: var(--accent); font-weight: 500; }
+  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  /* ── MAIN ── */
+  .main { margin-left: 220px; padding: 32px 36px; max-width: 960px; width: 100%; }
+
+  .page-header { margin-bottom: 28px; }
+  .page-title { font-size: 22px; font-weight: 600; }
+  .page-sub { font-size: 14px; color: var(--text2); margin-top: 4px; }
+
+  /* ── DATE NAV ── */
+  .date-nav {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 24px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 16px;
+  }
+  .date-btn {
+    width: 30px; height: 30px; border: 1px solid var(--border);
+    background: var(--bg); border-radius: var(--radius-sm);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: var(--text2); transition: all 0.15s; flex-shrink: 0;
+  }
+  .date-btn:hover { border-color: var(--border2); color: var(--text); }
+  .date-btn svg { width: 14px; height: 14px; }
+  #selectedDate {
+    font-family: 'DM Sans', sans-serif; font-size: 14px;
+    border: 1px solid var(--border); background: var(--bg);
+    border-radius: var(--radius-sm); padding: 5px 10px; color: var(--text); cursor: pointer;
+  }
+  .date-display { font-size: 15px; font-weight: 500; flex: 1; }
+  .today-btn {
+    font-size: 12px; padding: 5px 12px; border: 1px solid var(--border);
+    background: none; border-radius: var(--radius-sm); cursor: pointer;
+    color: var(--text2); font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+  }
+  .today-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── METRICS ── */
+  .metrics { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 24px; }
+  .metrics.four { grid-template-columns: repeat(4,1fr); }
+  .metric-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px;
+  }
+  .metric-label { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .metric-value { font-size: 24px; font-weight: 500; font-family: 'DM Mono', monospace; }
+  .metric-value.positive { color: var(--accent); }
+  .metric-value.negative { color: var(--accent2); }
+
+  /* ── ENTRIES ── */
+  .entry-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px;
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+    transition: border-color 0.15s;
+  }
+  .entry-card:hover { border-color: var(--border2); }
+  .entry-client { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .entry-times { font-size: 12px; color: var(--text2); font-family: 'DM Mono', monospace; margin-bottom: 4px; }
+  .entry-desc { font-size: 12px; color: var(--text3); max-width: 450px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .entry-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .entry-hours { font-size: 16px; font-weight: 600; font-family: 'DM Mono', monospace; }
+
+  .btn-remove {
+    width: 28px; height: 28px; border: 1px solid var(--border);
+    background: none; border-radius: var(--radius-sm); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text3); transition: all 0.15s;
+  }
+  .btn-remove:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-bg); }
+  .btn-remove svg { width: 14px; height: 14px; }
+
+  .empty-state {
+    background: var(--surface); border: 1px dashed var(--border2);
+    border-radius: var(--radius); padding: 32px; text-align: center;
+    color: var(--text3); font-size: 14px;
+  }
+  .empty-state svg { width: 28px; height: 28px; display: block; margin: 0 auto 10px; opacity: 0.4; }
+
+  /* ── FORM ── */
+  .form-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px; margin-top: 16px;
+  }
+  .form-title { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 16px; }
+  .form-grid { display: grid; gap: 12px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  label.field-label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; }
+
+  input, select, textarea {
+    font-family: 'DM Sans', sans-serif; font-size: 14px;
+    color: var(--text); background: var(--bg);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 8px 10px; outline: none; transition: border-color 0.15s; width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 72px; }
+
+  .form-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; flex-wrap: wrap; gap: 10px; }
+  .calc-preview { font-size: 13px; color: var(--text2); font-family: 'DM Mono', monospace; }
+  .calc-preview strong { color: var(--text); font-weight: 600; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border); background: none; cursor: pointer;
+    font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500;
+    color: var(--text2); transition: all 0.15s;
+  }
+  .btn:hover { border-color: var(--border2); color: var(--text); background: var(--bg); }
+  .btn svg { width: 15px; height: 15px; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
+  .btn-primary:hover { opacity: 0.88; color: white; }
+  .btn-green { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+  .btn-green:hover { background: #D0EBD8; }
+  .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ── WEEK ── */
+  .week-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 8px; margin-bottom: 20px; }
+  .day-block {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 8px; text-align: center;
+  }
+  .day-block.today { border-color: var(--accent); }
+  .day-name { font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .day-date { font-size: 11px; color: var(--text3); margin-bottom: 8px; }
+  .day-bar-bg { width: 100%; height: 52px; background: var(--bg); border-radius: 4px; position: relative; overflow: hidden; margin-bottom: 6px; }
+  .day-bar-fill { position: absolute; bottom: 0; left: 0; right: 0; border-radius: 4px 4px 0 0; transition: height 0.3s; }
+  .day-hours-label { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text2); }
+  .day-block.today .day-name { color: var(--accent); }
+
+  /* ── CLIENTS ── */
+  .client-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); margin-bottom: 6px; background: var(--surface);
+  }
+
+  /* ── MODAL (setup) ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; padding: 16px;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: var(--surface); border-radius: var(--radius);
+    padding: 28px; max-width: 440px; width: 100%;
+    border: 1px solid var(--border);
+  }
+  .modal h2 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+  .modal p { font-size: 14px; color: var(--text2); margin-bottom: 20px; line-height: 1.6; }
+  .modal .field { margin-bottom: 14px; }
+  .modal .field-label { display: block; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+  .warning-box { background: var(--accent2-bg); border: 1px solid #e8c860; border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: #7a5800; margin-bottom: 16px; line-height: 1.5; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--text); color: white;
+    padding: 12px 18px; border-radius: var(--radius);
+    font-size: 13px; opacity: 0; transform: translateY(8px);
+    transition: all 0.25s; pointer-events: none; z-index: 200; max-width: 300px;
+  }
+  .toast.visible { opacity: 1; transform: translateY(0); }
+  .toast.green { background: var(--accent); }
+  .toast.red { background: var(--danger); }
+
+  .page { display: none; }
+  .page.active { display: block; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  /* ── MOBILE ── */
+  .mobile-header {
+    display: none; background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 12px 16px; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 9;
+  }
+  .hamburger { width: 32px; height: 32px; border: 1px solid var(--border); background: none; border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .hamburger svg { width: 16px; height: 16px; }
+  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 9; }
+
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay.open { display: block; }
+    .mobile-header { display: flex; }
+    .main { margin-left: 0; padding: 16px; }
+    .form-row, .form-row.three { grid-template-columns: 1fr; }
+    .metrics { grid-template-columns: 1fr 1fr; }
+    .metrics.four { grid-template-columns: 1fr 1fr; }
+    .week-grid { gap: 4px; }
+    .day-block { padding: 8px 4px; }
+    .day-name { font-size: 9px; }
+    .day-hours-label { font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SETUP MODAL -->
+<div id="setupModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>⚙️ Configurar acesso</h2>
+    <p>Para salvar seus dados no GitHub, informe seu token de acesso. Ele fica guardado apenas neste browser — nunca é enviado para nenhum servidor além do GitHub.</p>
+    <div class="warning-box">
+      ⚠️ Cole seu token apenas aqui, nesta tela do app — nunca em conversas ou e-mails.
+    </div>
+    <div class="field">
+      <label class="field-label">Token GitHub (começa com ghp_...)</label>
+      <input type="password" id="setupToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+    </div>
+    <div class="field">
+      <label class="field-label">Seu nome (para identificar os apontamentos)</label>
+      <input type="text" id="setupUser" placeholder="Ex: João ou Esposa">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="saveSetup()">Salvar e continuar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MOBILE HEADER -->
+<div class="mobile-header">
+  <button class="hamburger" onclick="toggleSidebar()">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+  </button>
+  <span style="font-size:15px;font-weight:600;">Apontamentos</span>
+  <div id="mobileSyncBadge"></div>
+</div>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+      </div>
+      <div class="brand-name">Apontamentos</div>
+      <div class="brand-sub" id="sidebarUser">—</div>
+      <div id="syncBadge" class="sync-badge ok"><span class="sync-dot"></span> Sincronizado</div>
+    </div>
+
+    <div class="nav-section-label">Registros</div>
+    <button class="nav-item active" onclick="showPage('registrar',this)">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+      Registrar dia
+    </button>
+    <button class="nav-item" onclick="showPage('semana',this)">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
+      Semana
+    </button>
+
+    <div class="nav-section-label">Sistema</div>
+    <button class="nav-item" onclick="showPage('configurar',this)">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+      Configurar
+    </button>
+    <button class="nav-item" onclick="exportExcel()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+      Exportar Excel
+    </button>
+    <button class="nav-item" onclick="syncNow()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+      Sincronizar
+    </button>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- PAGE: REGISTRAR -->
+    <div id="page-registrar" class="page active">
+      <div class="page-header">
+        <div class="page-title">Registrar dia</div>
+        <div class="page-sub">Adicione os apontamentos do dia selecionado</div>
+      </div>
+
+      <div class="date-nav">
+        <button class="date-btn" onclick="changeDate(-1)">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+        </button>
+        <input type="date" id="selectedDate" onchange="loadDay()">
+        <button class="date-btn" onclick="changeDate(1)">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        </button>
+        <span class="date-display" id="dateDisplay"></span>
+        <button class="today-btn" onclick="goToday()">Hoje</button>
+      </div>
+
+      <div class="metrics">
+        <div class="metric-card">
+          <div class="metric-label">Horas hoje</div>
+          <div class="metric-value" id="mDay">0h 00min</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Meta diária</div>
+          <div class="metric-value" id="mGoal">8h 00min</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Saldo do dia</div>
+          <div class="metric-value" id="mBalance">—</div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span style="font-size:14px;font-weight:600;">Apontamentos</span>
+      </div>
+      <div id="entryList"></div>
+
+      <div class="form-card">
+        <div class="form-title">Novo apontamento</div>
+        <div class="form-grid">
+          <div class="form-row">
+            <div class="field">
+              <label class="field-label">Cliente</label>
+              <select id="fClient"></select>
+            </div>
+            <div class="field">
+              <label class="field-label">Entrada</label>
+              <input type="time" id="fStart" value="08:00" oninput="calcPreview()">
+            </div>
+          </div>
+          <div class="form-row three">
+            <div class="field">
+              <label class="field-label">Saída almoço</label>
+              <input type="time" id="fLunchOut" value="12:00" oninput="calcPreview()">
+            </div>
+            <div class="field">
+              <label class="field-label">Retorno almoço</label>
+              <input type="time" id="fLunchIn" value="13:00" oninput="calcPreview()">
+            </div>
+            <div class="field">
+              <label class="field-label">Saída</label>
+              <input type="time" id="fEnd" value="17:00" oninput="calcPreview()">
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label">Atividades realizadas</label>
+            <textarea id="fActivities" placeholder="Descreva as atividades do dia..."></textarea>
+          </div>
+          <div class="field">
+            <label class="field-label">Observações</label>
+            <textarea id="fObs" placeholder="Observações adicionais (opcional)..." style="min-height:52px;"></textarea>
+          </div>
+        </div>
+        <div class="form-footer">
+          <span class="calc-preview">Total calculado: <strong id="calcPreview">7h 00min</strong></span>
+          <button class="btn btn-primary" onclick="addEntry()">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            Adicionar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: SEMANA -->
+    <div id="page-semana" class="page">
+      <div class="page-header">
+        <div class="page-title">Visão semanal</div>
+        <div class="page-sub" id="weekRangeLabel"></div>
+      </div>
+      <div class="metrics four">
+        <div class="metric-card"><div class="metric-label">Total semana</div><div class="metric-value" id="wkTotal">—</div></div>
+        <div class="metric-card"><div class="metric-label">Meta semanal</div><div class="metric-value" id="wkGoal">40h 00min</div></div>
+        <div class="metric-card"><div class="metric-label">Saldo semana</div><div class="metric-value" id="wkBalance">—</div></div>
+        <div class="metric-card"><div class="metric-label">Dias apontados</div><div class="metric-value" id="wkDays">0</div></div>
+      </div>
+      <div class="week-grid" id="weekGrid"></div>
+      <div class="form-card">
+        <div class="form-title">Detalhamento</div>
+        <div id="weekDetail"></div>
+      </div>
+    </div>
+
+    <!-- PAGE: CONFIGURAR -->
+    <div id="page-configurar" class="page">
+      <div class="page-header"><div class="page-title">Configurações</div></div>
+
+      <div class="form-card" style="margin-bottom:16px;">
+        <div class="form-title">Clientes</div>
+        <div id="clientsList"></div>
+        <hr>
+        <div class="form-row" style="align-items:flex-end;">
+          <div class="field">
+            <label class="field-label">Novo cliente</label>
+            <input type="text" id="newClientInput" placeholder="Nome do cliente" onkeydown="if(event.key==='Enter')addClient()">
+          </div>
+          <button class="btn btn-primary" onclick="addClient()" style="height:38px;white-space:nowrap;">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            Adicionar
+          </button>
+        </div>
+      </div>
+
+      <div class="form-card" style="margin-bottom:16px;">
+        <div class="form-title">Metas</div>
+        <div class="form-row">
+          <div class="field">
+            <label class="field-label">Meta diária (horas)</label>
+            <input type="number" id="cfgDaily" value="8" min="1" max="24" onchange="savePrefs()">
+          </div>
+          <div class="field">
+            <label class="field-label">Meta semanal (horas)</label>
+            <input type="number" id="cfgWeekly" value="40" min="1" max="100" onchange="savePrefs()">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-title">Acesso GitHub</div>
+        <div id="githubInfo" style="font-size:13px;color:var(--text2);margin-bottom:12px;"></div>
+        <button class="btn" onclick="document.getElementById('setupModal').classList.remove('hidden')">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+          Alterar token
+        </button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────
+const GITHUB_OWNER = 'consultor014';
+const GITHUB_REPO  = 'apontamento-horas';
+const DATA_FILE    = 'dados.json';
+
+// ── STATE ────────────────────────────────────────────────
+let state = {
+  clients: ['Cliente A', 'Cliente B', 'Cliente C'],
+  entries: {},
+  dailyGoal: 8,
+  weeklyGoal: 40
+};
+let githubToken = '';
+let userName = '';
+let fileSha = null;
+let syncTimeout = null;
+
+function loadLocal() {
+  const s = localStorage.getItem('apt_state_v3');
+  if (s) try { Object.assign(state, JSON.parse(s)); } catch(e){}
+  githubToken = localStorage.getItem('apt_gh_token') || '';
+  userName    = localStorage.getItem('apt_username') || '';
+  fileSha     = localStorage.getItem('apt_sha') || null;
+}
+
+function saveLocal() {
+  localStorage.setItem('apt_state_v3', JSON.stringify(state));
+}
+
+// ── UTILS ────────────────────────────────────────────────
+function toMins(t) {
+  if (!t) return 0;
+  const [h,m] = t.split(':').map(Number);
+  return h*60+m;
+}
+function calcMins(e) {
+  const work = toMins(e.end) - toMins(e.start);
+  const lunch = Math.max(0, toMins(e.lunchIn) - toMins(e.lunchOut));
+  return Math.max(0, work - lunch);
+}
+function fmt(m) {
+  const h = Math.floor(m/60), min = m%60;
+  return h+'h '+String(min).padStart(2,'0')+'min';
+}
+function getToday() { return new Date().toISOString().split('T')[0]; }
+function fmtDate(d) {
+  const days=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const months=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const dt = new Date(d+'T12:00:00');
+  return days[dt.getDay()]+', '+dt.getDate()+' de '+months[dt.getMonth()]+' de '+dt.getFullYear();
+}
+function getWeekDates(dateStr) {
+  const d = new Date(dateStr+'T12:00:00');
+  const day = d.getDay();
+  const monday = new Date(d);
+  monday.setDate(d.getDate()-(day===0?6:day-1));
+  return Array.from({length:7},(_,i)=>{
+    const dd=new Date(monday); dd.setDate(monday.getDate()+i);
+    return dd.toISOString().split('T')[0];
+  });
+}
+
+// ── GITHUB API ───────────────────────────────────────────
+function setSyncBadge(status) {
+  const labels = { ok:'Sincronizado', syncing:'Sincronizando...', err:'Erro ao salvar' };
+  const html = `<div class="sync-badge ${status}"><span class="sync-dot"></span> ${labels[status]}</div>`;
+  document.getElementById('syncBadge').innerHTML = html;
+  document.getElementById('mobileSyncBadge').innerHTML = html;
+}
+
+async function ghFetch(method, path, body) {
+  const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}`, {
+    method,
+    headers: {
+      'Authorization': 'token '+githubToken,
+      'Content-Type': 'application/json',
+      'Accept': 'application/vnd.github.v3+json'
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  return res;
+}
+
+async function loadFromGitHub() {
+  if (!githubToken) return;
+  setSyncBadge('syncing');
+  try {
+    const res = await ghFetch('GET', DATA_FILE);
+    if (res.status === 404) {
+      setSyncBadge('ok');
+      return;
+    }
+    if (!res.ok) throw new Error('fetch failed');
+    const json = await res.json();
+    fileSha = json.sha;
+    localStorage.setItem('apt_sha', fileSha);
+    const content = JSON.parse(atob(json.content.replace(/\n/g,'')));
+    // Merge: mantém dados locais + dados do GitHub (GitHub prevalece em conflito de data)
+    state.entries = Object.assign({}, state.entries, content.entries || {});
+    if (content.clients && content.clients.length) state.clients = content.clients;
+    if (content.dailyGoal) state.dailyGoal = content.dailyGoal;
+    if (content.weeklyGoal) state.weeklyGoal = content.weeklyGoal;
+    saveLocal();
+    setSyncBadge('ok');
+  } catch(e) {
+    setSyncBadge('err');
+  }
+}
+
+async function saveToGitHub() {
+  if (!githubToken) return;
+  setSyncBadge('syncing');
+  const payload = {
+    entries: state.entries,
+    clients: state.clients,
+    dailyGoal: state.dailyGoal,
+    weeklyGoal: state.weeklyGoal,
+    lastUpdated: new Date().toISOString(),
+    updatedBy: userName
+  };
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
+  const body = {
+    message: `Apontamento atualizado por ${userName} em ${new Date().toLocaleString('pt-BR')}`,
+    content,
+    ...(fileSha ? { sha: fileSha } : {})
+  };
+  try {
+    const res = await ghFetch('PUT', DATA_FILE, body);
+    if (!res.ok) {
+      const err = await res.json();
+      // Conflito: recarrega e tenta de novo
+      if (res.status === 409 || res.status === 422) {
+        await loadFromGitHub();
+        await saveToGitHub();
+        return;
+      }
+      throw new Error(err.message);
+    }
+    const json = await res.json();
+    fileSha = json.content.sha;
+    localStorage.setItem('apt_sha', fileSha);
+    setSyncBadge('ok');
+  } catch(e) {
+    setSyncBadge('err');
+    toast('Erro ao salvar no GitHub. Verifique o token.', 'red');
+  }
+}
+
+function scheduleSave() {
+  saveLocal();
+  clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(saveToGitHub, 2000);
+}
+
+async function syncNow() {
+  await loadFromGitHub();
+  await saveToGitHub();
+  loadDay();
+  toast('Sincronizado com GitHub!', 'green');
+}
+
+// ── SETUP ────────────────────────────────────────────────
+function saveSetup() {
+  const token = document.getElementById('setupToken').value.trim();
+  const user  = document.getElementById('setupUser').value.trim();
+  if (!token || !user) { toast('Preencha token e nome.','red'); return; }
+  githubToken = token;
+  userName = user;
+  localStorage.setItem('apt_gh_token', token);
+  localStorage.setItem('apt_username', user);
+  document.getElementById('setupModal').classList.add('hidden');
+  updateGithubInfo();
+  loadFromGitHub().then(() => { loadDay(); toast('Conectado ao GitHub!','green'); });
+}
+
+function updateGithubInfo() {
+  document.getElementById('sidebarUser').textContent = userName || '—';
+  document.getElementById('githubInfo').textContent =
+    githubToken
+      ? `Conectado como "${userName}" · Dados salvos em github.com/${GITHUB_OWNER}/${GITHUB_REPO}`
+      : 'Nenhum token configurado.';
+}
+
+// ── NAVIGATION ───────────────────────────────────────────
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(name==='semana') renderWeek();
+  if(name==='configurar') renderConfigurar();
+  if(window.innerWidth<=768) toggleSidebar(false);
+}
+
+function toggleSidebar(force) {
+  const s = document.getElementById('sidebar');
+  const o = document.getElementById('sidebarOverlay');
+  const open = force !== undefined ? force : !s.classList.contains('open');
+  s.classList.toggle('open', open);
+  o.classList.toggle('open', open);
+}
+
+// ── DATE ─────────────────────────────────────────────────
+function changeDate(d) {
+  const dt = new Date(document.getElementById('selectedDate').value+'T12:00:00');
+  dt.setDate(dt.getDate()+d);
+  document.getElementById('selectedDate').value = dt.toISOString().split('T')[0];
+  loadDay();
+}
+function goToday() {
+  document.getElementById('selectedDate').value = getToday();
+  loadDay();
+}
+function loadDay() {
+  const date = document.getElementById('selectedDate').value;
+  document.getElementById('dateDisplay').textContent = fmtDate(date);
+  renderEntries(date);
+  updateDayMetrics(date);
+  calcPreview();
+}
+
+// ── ENTRIES ──────────────────────────────────────────────
+function renderEntries(date) {
+  const entries = state.entries[date] || [];
+  const el = document.getElementById('entryList');
+  if (!entries.length) {
+    el.innerHTML=`<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 9h2V7h-2v2zm0 8h2v-6h-2v6zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+      Nenhum apontamento para este dia.<br>Use o formulário abaixo para adicionar.
+    </div>`;
+    return;
+  }
+  el.innerHTML = entries.map((e,i)=>{
+    const mins = calcMins(e);
+    const lunchTxt = e.lunchOut&&e.lunchIn ? ` &nbsp;·&nbsp; Almoço ${e.lunchOut}–${e.lunchIn}` : '';
+    return `<div class="entry-card">
+      <div>
+        <div class="entry-client">${e.client}</div>
+        <div class="entry-times">${e.start} → ${e.end}${lunchTxt}</div>
+        ${e.activities?`<div class="entry-desc">${e.activities}</div>`:''}
+      </div>
+      <div class="entry-right">
+        <span class="entry-hours">${fmt(mins)}</span>
+        <button class="btn-remove" onclick="removeEntry('${date}',${i})">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateDayMetrics(date) {
+  const entries = state.entries[date]||[];
+  const total = entries.reduce((s,e)=>s+calcMins(e),0);
+  const goal = state.dailyGoal*60;
+  const bal = total-goal;
+  document.getElementById('mDay').textContent = fmt(total);
+  document.getElementById('mGoal').textContent = fmt(goal);
+  const balEl = document.getElementById('mBalance');
+  balEl.textContent = (bal>=0?'+':'')+fmt(Math.abs(bal));
+  balEl.className = 'metric-value '+(bal>=0?'positive':'negative');
+}
+
+function addEntry() {
+  const date = document.getElementById('selectedDate').value;
+  const client = document.getElementById('fClient').value;
+  const start = document.getElementById('fStart').value;
+  const end = document.getElementById('fEnd').value;
+  const lunchOut = document.getElementById('fLunchOut').value;
+  const lunchIn = document.getElementById('fLunchIn').value;
+  const activities = document.getElementById('fActivities').value.trim();
+  const obs = document.getElementById('fObs').value.trim();
+  if (!client||!start||!end) { toast('Preencha cliente, entrada e saída.','red'); return; }
+  if (toMins(end)<=toMins(start)) { toast('Saída deve ser após a entrada.','red'); return; }
+  if (!state.entries[date]) state.entries[date]=[];
+  state.entries[date].push({client,start,end,lunchOut,lunchIn,activities,obs});
+  scheduleSave();
+  loadDay();
+  document.getElementById('fActivities').value='';
+  document.getElementById('fObs').value='';
+  toast('Apontamento adicionado!','green');
+}
+
+function removeEntry(date,i) {
+  state.entries[date].splice(i,1);
+  if (!state.entries[date].length) delete state.entries[date];
+  scheduleSave();
+  loadDay();
+}
+
+function calcPreview() {
+  const e = {
+    start: document.getElementById('fStart').value,
+    end: document.getElementById('fEnd').value,
+    lunchOut: document.getElementById('fLunchOut').value,
+    lunchIn: document.getElementById('fLunchIn').value
+  };
+  document.getElementById('calcPreview').textContent = fmt(calcMins(e));
+}
+
+// ── WEEK ─────────────────────────────────────────────────
+function renderWeek() {
+  const date = document.getElementById('selectedDate').value;
+  const dates = getWeekDates(date);
+  const today = getToday();
+  const names = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  const dayMins = dates.map(d=>(state.entries[d]||[]).reduce((s,e)=>s+calcMins(e),0));
+  const maxMins = Math.max(...dayMins, state.dailyGoal*60, 1);
+
+  document.getElementById('weekRangeLabel').textContent =
+    'Semana de '+dates[0].split('-').reverse().join('/')+' a '+dates[6].split('-').reverse().join('/');
+  document.getElementById('wkGoal').textContent = fmt(state.weeklyGoal*60);
+
+  document.getElementById('weekGrid').innerHTML = dates.map((d,i)=>{
+    const mins=dayMins[i];
+    const pct=Math.min((mins/maxMins)*100,100);
+    const color=mins>=state.dailyGoal*60?'#2D6A4F':(mins>0?'#378ADD':'var(--border)');
+    const [,,dd]=d.split('-');
+    return `<div class="day-block${d===today?' today':''}">
+      <div class="day-name">${names[i]}</div>
+      <div class="day-date">${dd}</div>
+      <div class="day-bar-bg"><div class="day-bar-fill" style="height:${pct}%;background:${color}"></div></div>
+      <div class="day-hours-label">${mins>0?fmt(mins):'—'}</div>
+    </div>`;
+  }).join('');
+
+  const wkTotal=dayMins.reduce((a,b)=>a+b,0);
+  const wkDays=dayMins.filter(m=>m>0).length;
+  const bal=wkTotal-state.weeklyGoal*60;
+  document.getElementById('wkTotal').textContent=fmt(wkTotal);
+  document.getElementById('wkDays').textContent=wkDays;
+  const balEl=document.getElementById('wkBalance');
+  balEl.textContent=(bal>=0?'+':'')+fmt(Math.abs(bal));
+  balEl.className='metric-value '+(bal>=0?'positive':'negative');
+
+  let html='';
+  dates.forEach(d=>{
+    const entries=state.entries[d]||[];
+    if(!entries.length) return;
+    const total=entries.reduce((s,e)=>s+calcMins(e),0);
+    html+=`<div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px;">${fmtDate(d)} &nbsp;<span style="font-family:'DM Mono';font-size:12px;color:var(--accent)">${fmt(total)}</span></div>`;
+    entries.forEach(e=>{
+      html+=`<div style="font-size:12px;color:var(--text2);padding:3px 0 3px 12px;border-left:2px solid var(--border);margin-bottom:4px;">
+        <span style="font-weight:500;color:var(--text)">${e.client}</span> &nbsp;·&nbsp;
+        <span style="font-family:'DM Mono'">${e.start}–${e.end} (${fmt(calcMins(e))})</span>
+        ${e.activities?`<div style="color:var(--text3);margin-top:2px;">${e.activities.substring(0,80)}${e.activities.length>80?'…':''}</div>`:''}
+      </div>`;
+    });
+    html+='</div>';
+  });
+  document.getElementById('weekDetail').innerHTML=html||'<div style="font-size:13px;color:var(--text3);padding:8px 0;">Nenhum apontamento nesta semana.</div>';
+}
+
+// ── CONFIGURAR ───────────────────────────────────────────
+function renderConfigurar() {
+  document.getElementById('cfgDaily').value=state.dailyGoal;
+  document.getElementById('cfgWeekly').value=state.weeklyGoal;
+  document.getElementById('clientsList').innerHTML=state.clients.map((c,i)=>
+    `<div class="client-row">
+      <span>${c}</span>
+      <button class="btn-remove" onclick="removeClient(${i})">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+      </button>
+    </div>`).join('');
+  updateGithubInfo();
+  refreshClientSelect();
+}
+
+function addClient() {
+  const name=document.getElementById('newClientInput').value.trim();
+  if(!name) return;
+  if(state.clients.includes(name)){toast('Cliente já existe.','red');return;}
+  state.clients.push(name);
+  scheduleSave();
+  document.getElementById('newClientInput').value='';
+  renderConfigurar();
+  toast('Cliente adicionado!','green');
+}
+
+function removeClient(i) {
+  state.clients.splice(i,1);
+  scheduleSave();
+  renderConfigurar();
+}
+
+function savePrefs() {
+  state.dailyGoal=Number(document.getElementById('cfgDaily').value)||8;
+  state.weeklyGoal=Number(document.getElementById('cfgWeekly').value)||40;
+  scheduleSave();
+  document.getElementById('mGoal').textContent=fmt(state.dailyGoal*60);
+  toast('Preferências salvas!','green');
+}
+
+function refreshClientSelect() {
+  const sel=document.getElementById('fClient');
+  const cur=sel.value;
+  sel.innerHTML=state.clients.map(c=>`<option value="${c}">${c}</option>`).join('');
+  if(cur&&state.clients.includes(cur)) sel.value=cur;
+}
+
+// ── EXPORT EXCEL ─────────────────────────────────────────
+function exportExcel() {
+  const dates=Object.keys(state.entries).sort();
+  if(!dates.length){toast('Nenhum dado para exportar.','red');return;}
+
+  const rows=[];
+  dates.forEach(date=>{
+    (state.entries[date]||[]).forEach(e=>{
+      const mins=calcMins(e);
+      rows.push({
+        'Data': date,
+        'Dia da semana': fmtDate(date),
+        'Usuário': userName||'—',
+        'Cliente': e.client,
+        'Entrada': e.start,
+        'Saída': e.end,
+        'Saída Almoço': e.lunchOut||'',
+        'Retorno Almoço': e.lunchIn||'',
+        'Horas Trabalhadas': parseFloat((mins/60).toFixed(2)),
+        'Atividades': e.activities||'',
+        'Observações': e.obs||''
+      });
+    });
+  });
+
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:12},{wch:28},{wch:14},{wch:20},{wch:10},{wch:10},{wch:14},{wch:16},{wch:18},{wch:50},{wch:40}];
+  XLSX.utils.book_append_sheet(wb,ws,'Apontamentos');
+
+  // Totais semanais
+  const weekMap={};
+  rows.forEach(r=>{
+    const d=new Date(r['Data']+'T12:00:00');
+    const day=d.getDay();
+    const monday=new Date(d);
+    monday.setDate(d.getDate()-(day===0?6:day-1));
+    const wk=monday.toISOString().split('T')[0];
+    if(!weekMap[wk]) weekMap[wk]={total:0,usuario:r['Usuário']};
+    weekMap[wk].total+=r['Horas Trabalhadas'];
+  });
+  const weekRows=Object.entries(weekMap).sort().map(([wk,v])=>({
+    'Semana (início)':wk,
+    'Usuário':v.usuario,
+    'Total Horas':parseFloat(v.total.toFixed(2)),
+    'Meta':state.weeklyGoal,
+    'Saldo':parseFloat((v.total-state.weeklyGoal).toFixed(2))
+  }));
+  const ws2=XLSX.utils.json_to_sheet(weekRows);
+  ws2['!cols']=[{wch:16},{wch:14},{wch:14},{wch:10},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws2,'Totais Semanais');
+
+  const month=new Date().toISOString().slice(0,7).replace('-','_');
+  XLSX.writeFile(wb,`apontamentos_${userName||'usuario'}_${month}.xlsx`);
+  toast('Excel exportado!','green');
+}
+
+// ── TOAST ────────────────────────────────────────────────
+let toastTimer;
+function toast(msg,type='') {
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.className='toast visible '+(type==='green'?'green':type==='red'?'red':'');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.className='toast',3500);
+}
+
+// ── INIT ─────────────────────────────────────────────────
+loadLocal();
+document.getElementById('selectedDate').value=getToday();
+loadDay();
+refreshClientSelect();
+updateGithubInfo();
+
+if (!githubToken) {
+  document.getElementById('setupModal').classList.remove('hidden');
+} else {
+  loadFromGitHub().then(()=>{ loadDay(); refreshClientSelect(); });
+}
+</script>
+</body>
+</html>
