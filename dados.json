@@ -1,10 +1,22 @@
 {
-  "entries": {},
+  "entries": {
+    "2026-05-18": [
+      {
+        "client": "Bridgestone",
+        "start": "08:00",
+        "end": "17:30",
+        "lunchOut": "13:00",
+        "lunchIn": "14:00",
+        "activities": "Teste",
+        "obs": "Teste1"
+      }
+    ]
+  },
   "clients": [
     "Bridgestone"
   ],
   "dailyGoal": 8,
   "weeklyGoal": 40,
-  "lastUpdated": "2026-05-18T19:31:18.044Z",
+  "lastUpdated": "2026-05-18T19:31:53.616Z",
   "updatedBy": "Lucas Lira"
 }
