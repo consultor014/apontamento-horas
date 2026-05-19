@@ -20,6 +20,15 @@
         "lunchIn": "13:38",
         "activities": "",
         "obs": ""
+      },
+      {
+        "client": "Bridgestone",
+        "start": "08:20",
+        "end": "17:26",
+        "lunchOut": "12:38",
+        "lunchIn": "13:37",
+        "activities": "",
+        "obs": ""
       }
     ]
   },
@@ -28,6 +37,6 @@
   ],
   "dailyGoal": 8,
   "weeklyGoal": 40,
-  "lastUpdated": "2026-05-19T11:19:44.987Z",
+  "lastUpdated": "2026-05-19T20:35:09.448Z",
   "updatedBy": "Milena"
 }
